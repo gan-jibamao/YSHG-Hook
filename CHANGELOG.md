@@ -1,5 +1,25 @@
 # 更新日志
 
+## v4.11.2 — 2026-10-01
+
+**修复（重要）**
+- **修复启动崩溃（SIGBUS / KERN_PROTECTION_FAILURE）**
+  `__TEXT` 中 `__stubs`、`__stub_helper` 与 `__cstring` **同处一页**，
+  v4.11.1 解密时把该页降为 `R|W` 撤掉了执行权限 → `vm_protect` 自身的 stub
+  在第二次调用（恢复权限）时直接撞死。
+  现改为：**临时权限保留 X**（`R|W|X`），恢复时按段还原原始权限
+  （`__TEXT`→`R|X`，`__DATA_CONST`→`R`），并加权限获取重试兜底。
+
+**产物**
+
+| 文件 | 大小 | md5 |
+|---|---|---|
+| `yshg_hook_v4112.dylib` | 138,944 B | `b506b3b0ee6204358090f619dc9321d0` |
+| `yshg_hook_4.11.2_iphoneos-arm64.deb` | — | `ee9ade4bd163b8dcb282df11a98c4634` |
+| `阅姝阁-hook-v4112.ipa` | — | `e52f5ef57cdcd7f5bd333a3f199c7469` |
+
+---
+
 ## v4.11.1 — 2026-10-01
 
 **修复**
