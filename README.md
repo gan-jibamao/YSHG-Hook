@@ -43,7 +43,7 @@
 
 **② 越狱 deb**：
 ```
-dpkg -i yshg_hook_4.12.4_iphoneos-arm64.deb
+dpkg -i yshg_hook_4.13.0_iphoneos-arm64.deb
 ```
 
 **③ 整包 IPA**：安装 `阅姝阁-hook-v4128.ipa`（已内置，需自签）
