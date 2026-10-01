@@ -1,5 +1,22 @@
 # 更新日志
 
+## v4.12.5 — 2026-10-02
+
+**修复** 左滑删除失效（v4.12.0 自管滚动引入的回归）
+
+- **根因**：面板的自管 pan 手势**从未设 delegate** → UIKit 永远不调用 `gestureRecognizerShouldBegin:` → 「横向让位给左滑删除」那段判断等于没写 → pan 对任何方向都抢占手势 → 行上的 `UISwipeGestureRecognizer` 被挤出竞技场，左滑永远不识别
+- 修复：给面板 pan 设 `delegate`；让位判断加阈值（`ay > 4 && ay > ax*1.2`）
+- **新增行横向拖拽**：慢拖也能露出删除底（过半或快甩 → 露出，否则归位），不再只认快甩
+- 代理日志降噪（`delegate` 挂上后每次触摸都回调）；新增 `PAN 横向让位` / `ROWSWL` 诊断日志
+
+| 文件 | md5 |
+|---|---|
+| `yshg_hook_v4125.dylib` | `8a92e0839201620b24a399b5772ecee2` |
+| `yshg_hook_4.12.5_iphoneos-arm64.deb` | `17d54d4ec11a703b6e1e7ca8a1c83df4` |
+| `阅姝阁-hook-v4125.ipa` | `d080b3c86ae64757e61cc525449f15a0` |
+
+---
+
 ## v4.11.4 — 2026-10-01
 
 **修复（架构级）** 彻底解决启动 `SIGBUS` —— 弃用 `vm_protect` 方案。
