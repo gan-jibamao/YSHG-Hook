@@ -1,5 +1,45 @@
 # 更新日志
 
+## v4.11.4 — 2026-10-01
+
+**修复（架构级）** 彻底解决启动 `SIGBUS` —— 弃用 `vm_protect` 方案。
+
+前两版(v4.11.2 / v4.11.3)都在"改可执行页权限"这条路上打转，注定失败：
+
+- iOS 强制 **W^X**：可执行页不可能长期可写。崩溃报告里 `x4=0x17`(请求 R|W|X)
+  但实际页是 `rw-`，且 `Kernel Triage: VM - pmap_enter retried due to resource shortage`
+  —— 内核剥掉了 X。
+- 而 `__TEXT` 的最后一页同时住着 `__stubs` / `__stub_helper` / `__cstring` / `__const`。
+  一旦该页变 `rw-`，**不止 `vm_protect` 自己，所有 libc 调用都会崩**。
+
+**正解：不碰任何可执行页。** 构建时用链接器把常量搬到可写段：
+
+```
+ld64.lld -rename_section __TEXT __cstring __DATA __cstr \
+         -rename_section __TEXT __const   __DATA __tconst
+```
+
+`__DATA` 本就 `rw-`，构造入口直接原地解密即可，**全程零 `vm_protect` 调用**。
+
+**六项体检（全部通过）**
+
+| # | 项目 | 结果 |
+|---|---|---|
+| ① | 解密 + CRC 校验 | 2/2 段通过 |
+| ② | 加密段位置 | 全部在可写 `__DATA` |
+| ③ | 段权限 | `__TEXT=5`(r-x) · `__DATA=3`(rw-) |
+| ④ | 敏感串残留 | 无 |
+| ⑤ | 构造顺序 | `deobf()` 为构造函数首条 `bl` |
+| ⑥ | `vm_protect` 调用 | **0 次** |
+
+| 文件 | 大小 | md5 |
+|---|---|---|
+| `yshg_hook_v4114.dylib` | 138,832 B | `f43807f4df0617a2f2d77a4ff8ced2c7` |
+| `yshg_hook_4.11.4_iphoneos-arm64.deb` | — | `3e4fa526a280bc7461016a45cf00509c` |
+| `阅姝阁-hook-v4114.ipa` | — | `f4f35990c9d44a37c1d64fd825ff0f3d` |
+
+---
+
 ## v4.11.3 — 2026-10-01
 
 **修复（关键）** 启动 `SIGBUS` / `KERN_PROTECTION_FAILURE` —— v4.11.2 的修复不彻底。
