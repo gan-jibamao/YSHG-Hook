@@ -2,8 +2,8 @@
 
 **阅姝阁**（`com.box.dxgxx44`）增强插件 —— 下载加速 · 内置播放器 · 记录面板。
 
-> **闭源发布**：本仓库只提供成品与文档，**不含任何源代码**。
-> 二进制已做常量段加密与符号表抹除。
+> **开源发布**（v4.14.5 定稿起）：完整源码见 [`src/yshg_hook.c`](src/yshg_hook.c)（约 3.7k 行，注释齐全）。
+> 分发用二进制仍经常量段加密与符号表抹除处理（`dist/` 与 Releases 提供成品与 md5）。
 
 作者 / 版权：**鸡巴毛**
 
@@ -11,13 +11,26 @@
 
 ## 当前版本
 
-**v4.14.5** — 2026-10-02
+**v4.14.5** — 2026-10-02（**定稿**）
 
 | 文件 | 用途 | md5 |
 |---|---|---|
-| `yshg_hook_v4145.dylib` | 裸插件（TrollFools 等注入用） | `bfb6510268afc371afabc2d25467232b` |
-| `yshg_hook_4.14.5_iphoneos-arm64.deb` | 越狱 deb 包 | `8fe18d906c2b8e6abe473a43216a3fb5` |
-| `yueshuge-hook-v4145.ipa` | 已内置插件的整包（需自签） | `3a2ed2262136eeb97141054d2b06504b` |
+| [dist/yshg_hook_v4145.dylib](dist/yshg_hook_v4145.dylib) | 裸插件（TrollFools 等注入用） | `bfb6510268afc371afabc2d25467232b` |
+| [dist/yshg_hook_4.14.5_iphoneos-arm64.deb](dist/yshg_hook_4.14.5_iphoneos-arm64.deb) | 越狱 deb 包 | `8fe18d906c2b8e6abe473a43216a3fb5` |
+| [dist/yueshuge-hook-v4145.ipa](dist/yueshuge-hook-v4145.ipa) | 已内置插件的整包（需自签） | `3a2ed2262136eeb97141054d2b06504b` |
+
+---
+
+## 源码结构
+
+```
+src/yshg_hook.c    完整源码：流量重绑嗅探 / HLS 下载器 / TS→MP4 封装 / 播放器与 UI
+dist/              成品（与 Releases 一致）
+CHANGELOG.md       版本历史
+```
+
+构建链：`clang -O2 -fno-objc-arc` → `ld64.lld`（`-rename_section` 常量段搬迁）→ `ldid` → `llvm-strip` → 常量段加密。
+加密/打包脚本属发布工程，不随源码发布（密钥每次构建随机）。
 
 ---
 
@@ -62,11 +75,11 @@
 **② 越狱 deb**
 
 ```
-dpkg -i yshg_hook_4.14.5_iphoneos-arm64.deb
+dpkg -i dist/yshg_hook_4.14.5_iphoneos-arm64.deb
 ```
 
 **③ 整包 IPA**
-安装 `yueshuge-hook-v4145.ipa`（已内置插件，需自签）。
+安装 `dist/yueshuge-hook-v4145.ipa`（已内置插件，需自签）。
 
 环境要求：iOS 15.0+ / arm64，需越狱环境或 TrollStore、TrollFools 等注入环境。
 
