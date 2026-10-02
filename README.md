@@ -11,13 +11,17 @@
 
 ## 当前版本
 
-**v4.14.5** — 2026-10-02（**定稿**）
+**v4.14.6** — 2026-10-02（**源码性能优化**）
 
 | 文件 | 用途 | md5 |
 |---|---|---|
-| [dist/yshg_hook_v4145.dylib](dist/yshg_hook_v4145.dylib) | 裸插件（TrollFools 等注入用） | `bfb6510268afc371afabc2d25467232b` |
-| [dist/yshg_hook_4.14.5_iphoneos-arm64.deb](dist/yshg_hook_4.14.5_iphoneos-arm64.deb) | 越狱 deb 包 | `8fe18d906c2b8e6abe473a43216a3fb5` |
-| [dist/yueshuge-hook-v4145.ipa](dist/yueshuge-hook-v4145.ipa) | 已内置插件的整包（需自签） | `3a2ed2262136eeb97141054d2b06504b` |
+| [dist/yshg_hook_v4146.dylib](dist/yshg_hook_v4146.dylib) | 裸插件（TrollFools 等注入用） | `500e15bc4678546a624d3de416d723c0` |
+| [dist/yshg_hook_4.14.6_iphoneos-arm64.deb](dist/yshg_hook_4.14.6_iphoneos-arm64.deb) | 越狱 deb 包 | `6407cfcf4d77123d23a1e559de30838b` |
+| [dist/yueshuge-hook-v4146.ipa](dist/yueshuge-hook-v4146.ipa) | 已内置插件的整包（需自签） | `6a8ce688c77dd83b21f65ff2ebc77679` |
+
+> v4.14.6 构建链：`clang --target=arm64-apple-ios12.0.0 -fblocks -O2 -fPIC -fno-objc-arc`
+> → `ld64.lld -dylib`（`-rename_section` 段搬迁）→ `ldid -S` → `llvm-strip -x`
+> → `protect.py` 常量段加密（ChaCha20，密钥随机，CRC 校验，`deobf()` 运行时自解密）→ `ldid -S` 重签。
 
 ---
 

@@ -1,5 +1,28 @@
 # 更新日志
 
+## v4.14.6 — 2026-10-02（源码性能优化）
+
+**优化** 高频路径对象与 I/O 开销
+
+- 日志 fflush 改为每 8 行一次：my_read / my_write 每次系统调用都过 log_line，逐行 fflush 在全局锁内是高并发下载时的串行 I/O 热点；崩溃兜底由黑匣子直写 fd 承担
+- 播放/暂停图标缓存：tick 每拍不再重建 UIImageSymbolConfiguration，UIImage 不可变可安全复用
+- 悬浮钮样式按状态变化重设：空闲时每秒不再重建 UIColor + UIFont 全套
+- 修复 sps_wh 在缩放矩阵早退路径泄漏去 EP 副本
+
+**未动**：下载队列 / 去重表 / 锁结构 / 重绑逻辑 / 封装器布局 —— 审查后无安全且可本地验证的改进空间。
+
+| 文件 | md5 |
+|---|---|
+| `yshg_hook_v4146.dylib` | `500e15bc4678546a624d3de416d723c0` |
+| `yshg_hook_4.14.6_iphoneos-arm64.deb` | `6407cfcf4d77123d23a1e559de30838b` |
+| `yueshuge-hook-v4146.ipa` | `6a8ce688c77dd83b21f65ff2ebc77679` |
+
+构建链：`clang --target=arm64-apple-ios12.0.0 -fblocks -O2 -fPIC -fno-objc-arc` → `ld64.lld -dylib`
+（`-rename_section __TEXT __cstring __DATA __cstr`）→ `ldid -S` → `llvm-strip -x` → `protect.py`
+常量段加密（ChaCha20，密钥随机，明文段 CRC32 校验）→ `ldid -S` 重签。加密脚本见
+[`protect.py`](protect.py)，与本版 `deobf()` 契约逐字节对齐（魔数 `9E 37 C4 51 AB 0F 62 D8`、
+CKMASK 掩码、ctr0 = i * 0x9E3779B9、双端验证 CRC PASS）。
+
 ## v4.14.5 — 2026-10-02（定稿）
 
 **修复** 下载多个视频时偶发闪退

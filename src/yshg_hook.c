@@ -4,7 +4,7 @@
  *
  *   Author   : 鸡巴毛 (jibamao)
  *   Repo     : https://github.com/gan-jibamao/YSHG-Hook
- *   Version  : v4.14.5 （定稿）
+ *   Version  : v4.14.6 （源码性能优化）
  *
  * 实现原理（自研，不依赖 Substrate/Frida）：
  *   · fishhook 式重绑 —— 遍历全部已加载镜像（Runner / App.framework Dart AOT /
@@ -147,8 +147,17 @@ static void log_line(const char *fmt, ...) {
         va_list ap; va_start(ap, fmt);
         vsnprintf(msg, sizeof(msg), fmt, ap);
         va_end(ap);
-        if (g_log)  { fprintf(g_log,  "[%s] %s\n", ts, msg); fflush(g_log); }
-        if (g_log2) { fprintf(g_log2, "[%s] %s\n", ts, msg); fflush(g_log2); }
+        if (g_log)  { fprintf(g_log,  "[%s] %s\n", ts, msg); }
+        if (g_log2) { fprintf(g_log2, "[%s] %s\n", ts, msg); }
+        /* ★ v4.14.6: fflush 改为每 8 行一次 —— my_read/my_write 每次系统调用都过这里,
+           高并发下载时逐行 fflush 在全局锁内变成串行 I/O 热点;
+           崩溃兜底由黑匣子直写 fd(g_crashfd) 承担, 不依赖这条路径的实时 flush */
+        static unsigned log_flush_n;
+        if (++log_flush_n >= 8) {
+            log_flush_n = 0;
+            if (g_log)  fflush(g_log);
+            if (g_log2) fflush(g_log2);
+        }
     }
     pthread_mutex_unlock(&g_mu);
 }
@@ -1827,6 +1836,11 @@ static id g_btn_titleLabel(id btn) {
 }
 static void set_btn_style(const char *txt, double r, double g, double b) {
     if (!g_btn) return;
+    /* ★ v4.14.6: 状态未变直接跳过 —— tick 每秒重设背景/标题/字体全套,
+       空闲时每拍白白创建 UIColor + UIFont 对象; 文本或任一颜色变了才走全套 */
+    static char last_txt[64]; static double last_r = -1.0, last_g = -1.0, last_b = -1.0;
+    if (txt && !strcmp(txt, last_txt) && r == last_r && g == last_g && b == last_b) return;
+    if (txt) { snprintf(last_txt, sizeof last_txt, "%s", txt); last_r = r; last_g = g; last_b = b; }
     ((void(*)(id, SEL, id))oc_ms)(g_btn, oc_sel("setBackgroundColor:"), rgba(r, g, b, 0.92));
     ((void(*)(id, SEL, id, unsigned long))oc_ms)(g_btn, oc_sel("setTitle:forState:"), ns_str(txt), 0);
     ((void(*)(id, SEL, id, unsigned long))oc_ms)(g_btn, oc_sel("setTitleColor:forState:"), rgba(1, 1, 1, 1), 0);
@@ -2988,7 +3002,13 @@ static void tick_fn(void) {
         if (g_ctlvis && r <= 0.01f) ctl_touch();
         if (g_ctlvis && r > 0.01f && time(NULL) - g_ctlshow > 3) { dl_log("CTLAUTO 隐藏"); player_ctl_apply(0.0f); }
         if (g_ppbtn) {
-            id pim = sym_img_sz(r > 0.01f ? "pause.fill" : "play.fill", 19.0);
+            /* ★ v4.14.6: 播放/暂停图标缓存 —— 原来每拍都走
+               UIImageSymbolConfiguration + imageWithConfiguration 重新生成,
+               常驻主线程每秒一次分配; UIImage 不可变, 可安全复用 */
+            static id pim_play, pim_pause;
+            if (!pim_play)  pim_play  = sym_img_sz("play.fill", 19.0);
+            if (!pim_pause) pim_pause = sym_img_sz("pause.fill", 19.0);
+            id pim = r > 0.01f ? pim_pause : pim_play;
             if (pim) ((void(*)(id, SEL, id, unsigned long))oc_ms)(g_ppbtn, oc_sel("setImage:forState:"), pim, 0);
         }
     }
@@ -3344,7 +3364,8 @@ static void sps_wh(const unsigned char *s, int n, int *W, int *H) {
         if (res == 3) U(1);
         UE(); UE(); U(1); // bit_depth_luma/chroma, qpprime
         U(1); scal = res; // ★ seq_scaling_matrix_present_flag 是 1 位不是 UE
-        if (scal) return; // 缩放表流不常见, 放弃宽高(保持 0, 不破坏流)
+        if (scal) { free(cl); return; } /* 缩放表流不常见, 放弃宽高(保持 0, 不破坏流)
+                                           ★ v4.14.6: 原来直接 return 泄漏去 EP 副本 cl */
     }
     UE();                 // log2_max_frame_num_minus4
     UE();                 // pic_order_cnt_type
