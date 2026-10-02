@@ -814,7 +814,7 @@ __attribute__((constructor)) static void yshg_init(void) {
         const struct mach_header *h = dyld_img_hdr((uint32_t)i);
         rebind_image(h, (intptr_t)dyld_img_slide((uint32_t)i), dyld_img_name ? dyld_img_name((uint32_t)i) : "?");
     }
-    log_line("=== yshg_hook v4.14.5 attached (%d images scanned, %d 镜像共 %d 槽重绑) ===", n, g_hit_imgs, g_hit_total);
+    log_line("=== yshg_hook v4.14.7 attached (%d images scanned, %d 镜像共 %d 槽重绑) ===", n, g_hit_imgs, g_hit_total);
     for (unsigned b = 0; b < NBIND; b++)
         if (g_bind_hits[b]) log_line("  HOOKED %-12s x%d", g_binds[b].name, g_bind_hits[b]);
     log_line("pid=%d HOME=%s", getpid(), getenv("HOME") ? getenv("HOME") : "?");
@@ -860,8 +860,21 @@ static int g_dl_seq;   /* 文件命名序号(只增, 不参与配额) */
 static int g_jhead, g_jtail;
 static char g_jobs[16][1200];
 static char g_cand[1200];
+static char g_cand_pl[1200]; static time_t g_cand_pl_t;   /* ★ v4.14.7 最近播放列表候选 */
 static volatile int g_ready, g_auto, g_act, g_cur, g_tot;
 static time_t g_flash_until;
+
+/* ★ v4.14.7 播放列表候选: 只收 m3u8 / parse?url= / mp4 / key 形态的 URL。
+   播放期间分段请求持续覆盖 g_cand(最后一次出站请求), 点抓抓到的常是 .ts 分段
+   → 封装器判"无分段"静默失败 = "点抓没反应"。此表让 tap 优先命中真正的播放列表。 */
+static void cand_pl_set(const char *u) {
+    if (!u || !*u) return;
+    if (!strstr(u, ".m3u8") && !strstr(u, "parse?url=") && !strstr(u, ".mp4") && !strstr(u, "/key/")) return;
+    pthread_mutex_lock(&g_dlm);
+    snprintf(g_cand_pl, sizeof(g_cand_pl), "%s", u);
+    g_cand_pl_t = time(NULL);
+    pthread_mutex_unlock(&g_dlm);
+}
 
 
 // ============ 重建段: 日志/工具/取回/解析 (v1.6 等价) ============
@@ -1564,6 +1577,7 @@ void dl_maybe_enqueue(const char *url, const char *reqbuf, size_t n) {
             int auto_on = g_auto;
             pthread_mutex_unlock(&g_dlm);
             char qk[1400]; snprintf(qk, sizeof(qk), "Q:%s", dec);
+            cand_pl_set(dec);   /* ★ v4.14.7 喂播放列表候选表 */
             if (auto_on && seen_add(qk)) dl_push_job(dec);   // ★ 自动去重: 同一视频只入队一次
         }
         return;
@@ -1582,6 +1596,7 @@ void dl_maybe_enqueue(const char *url, const char *reqbuf, size_t n) {
     g_ready = 1;
     int auto_on = g_auto;
     pthread_mutex_unlock(&g_dlm);
+    cand_pl_set(url);
     log_line("CAND %s", url);
     if (auto_on) dl_push_job(url);
 }
@@ -1609,6 +1624,7 @@ static void dl_consider_url(const char *u) {
     g_ready = 1;
     int auto_on = g_auto;
     pthread_mutex_unlock(&g_dlm);
+    cand_pl_set(real);
     log_line("CAND %s", real);
     if (auto_on) dl_push_job(real);
 }
@@ -1619,8 +1635,12 @@ static void dl_grab_current(void) {
     pthread_mutex_lock(&g_dlm);
     int ok = g_ready && g_cand[0];
     if (ok) snprintf(u, sizeof(u), "%s", g_cand);
+    /* ★ v4.14.7: 播放列表候选优先 —— 播放中分段请求持续覆盖 g_cand,
+       原来点抓抓到的常是 .ts 分段 → "无分段"静默失败 = "点抓没反应" */
+    if (g_cand_pl[0]) { snprintf(u, sizeof(u), "%s", g_cand_pl); ok = 1; }
     pthread_mutex_unlock(&g_dlm);
     if (!ok) { dl_log("无候选: 先在 app 里播一下要抓的视频"); return; }
+    dl_log("GRAB %s", u);   /* ★ 点抓落点: 设备日志可核对抓到的是列表还是分段 */
     dl_push_job(u);
 }
 
@@ -1642,7 +1662,9 @@ static void dl_push_job(const char *url) {
             return;
         }
     int full = (g_jtail - g_jhead) >= 16;
-    if (!full) { snprintf(g_jobs[g_jtail % 16], 1200, "%s", url); g_jtail++; pthread_cond_signal(&g_jcond); }
+    if (!full) { snprintf(g_jobs[g_jtail % 16], 1200, "%s", url); g_jtail++;
+                 g_flash_until = time(NULL) + 2;   /* ★ v4.14.7 入队即闪 ✓: 点抓立刻有反馈 */
+                 pthread_cond_signal(&g_jcond); }
     pthread_mutex_unlock(&g_dlm);
     if (full) dl_log("队列满, 丢 %s", url);
     else dl_log("ENQ %s", url);
