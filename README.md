@@ -11,13 +11,13 @@
 
 ## 当前版本
 
-**v4.14.3** — 2026-10-02
+**v4.14.4** — 2026-10-02
 
 | 文件 | 用途 | md5 |
 |---|---|---|
-| `yshg_hook_v4143.dylib` | 裸插件（TrollFools 等注入用） | `45e2eebd4ec1fc2854d3fea8e83f0319` |
-| `yshg_hook_4.14.3_iphoneos-arm64.deb` | 越狱 deb 包 | `5f91f98121395cbcb215315e3161a70b` |
-| `yueshuge-hook-v4143.ipa` | 已内置插件的整包（需自签） | `dbc953fb1092bd72cdbd1afa357049bb` |
+| `yshg_hook_v4144.dylib` | 裸插件（TrollFools 等注入用） | `f737a1de380f1d733224306bad4ea3a3` |
+| `yshg_hook_4.14.4_iphoneos-arm64.deb` | 越狱 deb 包 | `45bc9299345b138b2adc64e98645ac4e` |
+| `yueshuge-hook-v4144.ipa` | 已内置插件的整包（需自签） | `253d2de490e131093c8e07568ef38dfb` |
 
 ---
 
@@ -62,11 +62,11 @@
 **② 越狱 deb**
 
 ```
-dpkg -i yshg_hook_4.14.3_iphoneos-arm64.deb
+dpkg -i yshg_hook_4.14.4_iphoneos-arm64.deb
 ```
 
 **③ 整包 IPA**
-安装 `yueshuge-hook-v4143.ipa`（已内置插件，需自签）。
+安装 `yueshuge-hook-v4144.ipa`（已内置插件，需自签）。
 
 环境要求：iOS 15.0+ / arm64，需越狱环境或 TrollStore、TrollFools 等注入环境。
 
