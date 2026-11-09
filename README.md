@@ -17,7 +17,6 @@
 |---|---|---|
 | [dist/yshg_hook_v4147.dylib](dist/yshg_hook_v4147.dylib) | 裸插件（TrollFools 等注入用） | `26aa5e03cef4071d72b6755b8f7131ab` |
 | [dist/yshg_hook_4.14.7_iphoneos-arm64.deb](dist/yshg_hook_4.14.7_iphoneos-arm64.deb) | 越狱 deb 包 | `b69056fd865e526dcffdde0af5dada6f` |
-| [dist/yueshuge-hook-v4147.ipa](dist/yueshuge-hook-v4147.ipa) | 已内置插件的整包（需自签） | `3f6deb76900414430c8139a68cbe4956` |
 
 > v4.14.6 构建链：`clang --target=arm64-apple-ios12.0.0 -fblocks -O2 -fPIC -fno-objc-arc`
 > → `ld64.lld -dylib`（`-rename_section` 段搬迁）→ `ldid -S` → `llvm-strip -x`
@@ -82,8 +81,14 @@ CHANGELOG.md       版本历史
 dpkg -i dist/yshg_hook_4.14.5_iphoneos-arm64.deb
 ```
 
-**③ 整包 IPA**
-安装 `dist/yueshuge-hook-v4145.ipa`（已内置插件，需自签）。
+**③ 整包 IPA（不再分发）**
+
+仓库与 Release 不再提供预签名整包。iOS 的可安装包必须携带 provisioning profile，
+而 profile 会把签名者允许安装的设备 UDID 列表明文写进包里 —— 分发成品包等于公开设备标识。
+
+需要整包就自己打：取官方 `com.box.dxgxx44` 的 ipa，把 `dist/yshg_hook_v4147.dylib`
+注入 `Payload/*.app/` 并改 `LC_LOAD_DYLIB`，再用**你自己的**证书重签。
+TrollStore 环境下可直接装未签名包，无需描述文件。
 
 环境要求：iOS 15.0+ / arm64，需越狱环境或 TrollStore、TrollFools 等注入环境。
 
